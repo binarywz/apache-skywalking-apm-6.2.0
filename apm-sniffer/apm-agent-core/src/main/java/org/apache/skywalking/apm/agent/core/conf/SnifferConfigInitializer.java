@@ -59,30 +59,61 @@ public class SnifferConfigInitializer {
      * `agent.service_name` in config file.
      * <p>
      * At the end, `agent.service_name` and `collector.servers` must not be blank.
+     *
+     * 作用: 将最终的配置信息填充到Config的静态字段中，主要步骤如下
+     * - 将agent.conf文件中全部配置信息填充到Config中相应的静态字段中
+     * - 解析系统环境变量值，覆盖Config中相应的静态字段
+     * - 解析Java Agent的参数，覆盖Config中相应的静态字段
+     *
+     * 在启动应用时，需要在VM Option中指定agent.config配置文件
+     * -javaagent:D:\dev\binarywz\sky-walking\apache-skywalking-apm-6.2.0\skywalking-agent\skywalking-agent.jar
+     * -Dskywalking_config=D:\dev\binarywz\sky-walking\skywalking-basic\demo-provider\src\main\resources\agent.config
+     * agent.config 配置文件中的配置格式为"${配置项名称:默认值}"，具体配置项如下:
+     * agent.service_name=${SW_AGENT_NAME:Your_ApplicationName}
      */
     public static void initialize(String agentOptions) throws ConfigNotFoundException, AgentPackageNotFoundException {
         InputStreamReader configFileStream;
 
         try {
+            /**
+             * 1.加载agent.config配置文件
+             * - 优先根据环境变量(skywalking_config)指定的agent.config文件路径加载。
+             *   若环境变量未指定skywalking_config配置，则到skywalking-agent.jar同级的config目录下查找agent.confg配置文件.
+             * - 将agent.config文件中的配置信息加载到Properties对象之后，将使用PropertyPlaceholderHelper对配置信息进行解析，
+             *   将当前的"${配置项名称:默认值}"格式的配置值，替换成其中的默认值
+             * - 完成解析之后，会通过ConfigInitializer工具类，将配置信息填充到Config中的静态字段中
+             * -
+             */
             configFileStream = loadConfig();
             Properties properties = new Properties();
             properties.load(configFileStream);
             for (String key : properties.stringPropertyNames()) {
                 String value = (String)properties.get(key);
                 //replace the key's value. properties.replace(key,value) in jdk8+
+                // 按照${配置项名称:默认值}的格式解析各个配置项
                 properties.put(key, PropertyPlaceholderHelper.INSTANCE.replacePlaceholders(value, properties));
             }
+            // 填充Config中的静态字段
             ConfigInitializer.initialize(properties, Config.class);
         } catch (Exception e) {
             logger.error(e, "Failed to read the config file, skywalking is going to run in default config.");
         }
 
+        /**
+         * 2.解析环境变量，并覆盖Config中相应的静态字段
+         * - overrideConfigBySystemProp()方法中会遍历环境变量(即 System.getProperties()集合)，如果环境变是以"skywalking."开头的，
+         *   则认为是SkyWalking的配置，同样会填充到Config类中，以覆盖agent.config中的默认值
+         */
         try {
             overrideConfigBySystemProp();
         } catch (Exception e) {
             logger.error(e, "Failed to read the system properties.");
         }
 
+        /**
+         * 3.解析Java Agent参数，并覆盖Config中相应的静态字段
+         * - overrideConfigByAgentOptions()方法解析的是Java Agent的参数，填充Config类的规则与前面两步相同，不再重复
+         */
         if (!StringUtil.isEmpty(agentOptions)) {
             try {
                 agentOptions = agentOptions.trim();
@@ -94,6 +125,7 @@ public class SnifferConfigInitializer {
             }
         }
 
+        // 检测SERVICE_NAME和BACKEND_SERVICE两个配置项，若为空则抛异常
         if (StringUtil.isEmpty(Config.Agent.SERVICE_NAME)) {
             throw new ExceptionInInitializerError("`agent.service_name` is missing.");
         }
@@ -101,6 +133,7 @@ public class SnifferConfigInitializer {
             throw new ExceptionInInitializerError("`collector.backend_service` is missing.");
         }
 
+        // 更新初始化标记
         IS_INIT_COMPLETED = true;
     }
 

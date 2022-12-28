@@ -64,8 +64,16 @@ public class SkyWalkingAgent {
     public static void premain(String agentArgs, Instrumentation instrumentation) throws PluginException {
         final PluginFinder pluginFinder;
         try {
+            /**
+             * 1.初始化配置信息
+             */
             SnifferConfigInitializer.initialize(agentArgs);
 
+            /**
+             * 2.查找并解析skywalking-plugin.def插件文件
+             * 3.AgentClassLoader加载插件类并进行实例化
+             * 4.PluginFinder提供插件匹配能力，即对插件进行分类管理
+             */
             pluginFinder = new PluginFinder(new PluginBootstrap().loadPlugins());
 
         } catch (ConfigNotFoundException ce) {
@@ -79,6 +87,9 @@ public class SkyWalkingAgent {
             return;
         }
 
+        /**
+         * 5.使用ByteBuddy创建AgentBuilder
+         */
         final ByteBuddy byteBuddy = new ByteBuddy()
             .with(TypeValidation.of(Config.Agent.IS_OPEN_DEBUGGING_CLASS));
 
@@ -98,12 +109,18 @@ public class SkyWalkingAgent {
             .with(new Listener())
             .installOn(instrumentation);
 
+        /**
+         * 6.使用JDK SPI加载的方式，启动BootService服务
+         */
         try {
             ServiceManager.INSTANCE.boot();
         } catch (Exception e) {
             logger.error(e, "Skywalking agent boot failure.");
         }
 
+        /**
+         * 7.添加一个JVM钩子
+         */
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override public void run() {
                 ServiceManager.INSTANCE.shutdown();
