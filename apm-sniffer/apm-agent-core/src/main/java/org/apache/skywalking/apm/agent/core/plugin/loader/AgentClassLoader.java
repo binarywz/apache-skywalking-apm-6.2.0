@@ -44,6 +44,11 @@ import org.apache.skywalking.apm.agent.core.plugin.PluginBootstrap;
  * which is in charge of finding plugins and interceptors.
  *
  * @author wusheng
+ *
+ * Note: 目的是不在应用的classpath中引入Skywlaking的插件jar包，这样就可以让应用无依赖、无感知的加载插件
+ * 主要作用是从其classpath下加载类(或资源文件):
+ * - findClass()
+ * - findResource()
  */
 public class AgentClassLoader extends ClassLoader {
 
@@ -57,13 +62,39 @@ public class AgentClassLoader extends ClassLoader {
      */
     private static AgentClassLoader DEFAULT_LOADER;
 
+    /**
+     * classpath字段在构造函数中初始化，该字段指向了AgentClassLoader要扫描的目录:
+     * skywalking-agent.jar包同级别的plugins目录和activations目录
+     */
     private List<File> classpath;
+    /**
+     * classpath下所有的jar文件，getAllJars()
+     */
     private List<Jar> allJars;
     private ReentrantLock jarScanLock = new ReentrantLock();
 
     /**
      * Functional Description: solve the classloader dead lock when jvm start
      * only support JDK7+, since ParallelCapable appears in JDK7+
+     *
+     * 开启类加载器的并行加载模式 -> 降低锁的粒度，从ClassLoader级别缩小到具体加载某一个Class，提高并发度
+     * registerAsParallelCapable() -> Reflection.getCallerClass().asSubclass(ClassLoader.class);
+     * - 拿到调用者类的ClassLoader，并将当前调用者类转换成ClassLoader的一个子类 -> 保证调用者类是ClassLoader的子类，若调用者类非ClassLoader子类转换类型时会报错
+     * ParallelLoaders.register(callerClass) -> Set<Class<? extends ClassLoader>> loaderTypes
+     * - loaderTypes -> 并行能力类加载器
+     * 若当前类加载器注册成为并行之后，parallelLockMap不为空，具体见{@link ClassLoader#ClassLoader()}
+     * loadClass的时候会获取锁，具体见{@link java.lang.ClassLoader#getClassLoadingLock(java.lang.String)}
+     * protected Object getClassLoadingLock(String className) {
+     *     Object lock = this;
+     *     if (parallelLockMap != null) {
+     *         Object newLock = new Object();
+     *         lock = parallelLockMap.putIfAbsent(className, newLock);
+     *         if (lock == null) {
+     *             lock = newLock;
+     *         }
+     *     }
+     *     return lock;
+     * }
      */
     private static void tryRegisterAsParallelCapable() {
         Method[] methods = ClassLoader.class.getDeclaredMethods();
@@ -102,9 +133,15 @@ public class AgentClassLoader extends ClassLoader {
     }
 
     public AgentClassLoader(ClassLoader parent) throws AgentPackageNotFoundException {
-        super(parent);
+        super(parent); // 双亲委派机制
+        /**
+         * 获取skywalking.jar所在的目录
+         */
         File agentDictionary = AgentPackagePath.getPath();
         classpath = new LinkedList<File>();
+        /**
+         * 初始化classpath集合，指向skywalking-agent.jar包同目录的两个目录
+         */
         classpath.add(new File(agentDictionary, "plugins"));
         classpath.add(new File(agentDictionary, "activations"));
     }
