@@ -39,6 +39,8 @@ import static net.bytebuddy.matcher.ElementMatchers.not;
  * This is a very complex match.
  *
  * @author wusheng
+ *
+ * Note: 根据标注在方法上的注解匹配目标类
  */
 public class MethodAnnotationMatch implements IndirectMatch {
     private String[] annotations;

@@ -32,6 +32,8 @@ import org.apache.skywalking.apm.agent.core.logging.api.LogManager;
  * and ask {@link PluginCfg} to load all plugin definitions.
  *
  * @author wusheng
+ *
+ * Note: 加载全部插件
  */
 public class PluginBootstrap {
     private static final ILog logger = LogManager.getLogger(PluginBootstrap.class);
@@ -44,6 +46,9 @@ public class PluginBootstrap {
     public List<AbstractClassEnhancePluginDefine> loadPlugins() throws AgentPackageNotFoundException {
         AgentClassLoader.initDefaultLoader();
 
+        /**
+         * 读取所有Agent插件中的skywalking-plugin.def文件
+         */
         PluginResourcesResolver resolver = new PluginResourcesResolver();
         List<URL> resources = resolver.getResources();
 
@@ -62,10 +67,14 @@ public class PluginBootstrap {
 
         List<PluginDefine> pluginClassList = PluginCfg.INSTANCE.getPluginClassList();
 
+        /**
+         * 遍历全部PluginDefine对象，通过反射将其中的defineClass字段中记录的插件类实例化
+         */
         List<AbstractClassEnhancePluginDefine> plugins = new ArrayList<AbstractClassEnhancePluginDefine>();
         for (PluginDefine pluginDefine : pluginClassList) {
             try {
                 logger.debug("loading plugin class {}.", pluginDefine.getDefineClass());
+                // 使用默认AgentClassLoader实例加载
                 AbstractClassEnhancePluginDefine plugin =
                     (AbstractClassEnhancePluginDefine)Class.forName(pluginDefine.getDefineClass(),
                         true,

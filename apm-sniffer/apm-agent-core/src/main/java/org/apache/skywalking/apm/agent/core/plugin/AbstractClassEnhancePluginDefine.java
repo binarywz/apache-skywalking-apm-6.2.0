@@ -32,6 +32,12 @@ import org.apache.skywalking.apm.util.StringUtil;
  * <p>
  * It provides the outline of enhancing the target class.
  * If you want to know more about enhancing, you should go to see {@link ClassEnhancePluginDefine}
+ *
+ * Note: 所有Agent插件类的顶级父类
+ * - enhanceClass(): 用于匹配当前插件要增强的目标类
+ * - define(): 插件类增强逻辑的入口，底层会调用下面的enhance()/witnessClass()
+ * - enhance(): 真正执行增强逻辑的地方
+ * - witnessClass(): 一个开源组件可能会有多个版本，插件会通过该方法识别组件的不同版本，防止对不兼容的版本进行增强
  */
 public abstract class AbstractClassEnhancePluginDefine {
     private static final ILog logger = LogManager.getLogger(AbstractClassEnhancePluginDefine.class);

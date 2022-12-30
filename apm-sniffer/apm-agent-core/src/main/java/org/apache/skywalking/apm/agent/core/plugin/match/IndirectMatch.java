@@ -28,7 +28,16 @@ import net.bytebuddy.matcher.ElementMatcher;
  * @author wusheng
  */
 public interface IndirectMatch extends ClassMatch {
+    /**
+     * Junction是Byte Buddy中的类，可以通过and/or等操作串联多个ElementMatcher进行匹配
+     * @return
+     */
     ElementMatcher.Junction buildJunction();
 
+    /**
+     * 用于检测传入的类型是否匹配该Match
+     * @param typeDescription
+     * @return
+     */
     boolean isMatch(TypeDescription typeDescription);
 }

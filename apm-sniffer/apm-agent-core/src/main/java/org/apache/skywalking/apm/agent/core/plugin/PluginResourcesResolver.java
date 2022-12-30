@@ -33,10 +33,16 @@ import org.apache.skywalking.apm.agent.core.plugin.loader.AgentClassLoader;
  * The file must be named 'skywalking-plugin.def'
  *
  * @author wusheng
+ *
+ * Note: Agent插件的资源解析器
  */
 public class PluginResourcesResolver {
     private static final ILog logger = LogManager.getLogger(PluginResourcesResolver.class);
 
+    /**
+     * 读取所有的Agent插件中的skywalking-plugin.def
+     * @return
+     */
     public List<URL> getResources() {
         List<URL> cfgUrlPaths = new ArrayList<URL>();
         Enumeration<URL> urls;

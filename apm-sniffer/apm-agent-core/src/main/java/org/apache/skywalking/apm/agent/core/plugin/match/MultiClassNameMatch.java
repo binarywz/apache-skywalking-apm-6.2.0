@@ -30,6 +30,8 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
  * Match class with a given set of classes.
  *
  * @author zhangxin
+ *
+ * Note: 指定一个matchClassNames集合，该集合内的类即为目标类
  */
 public class MultiClassNameMatch implements IndirectMatch {
 

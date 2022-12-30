@@ -23,6 +23,14 @@ import org.apache.skywalking.apm.agent.core.plugin.exception.IllegalPluginDefine
 import org.apache.skywalking.apm.util.StringUtil;
 
 public class PluginDefine {
+
+    /**
+     * name -> key
+     * defineClass -> value
+     * tomcat-7.x/8.x=org.apache.skywalking.apm.plugin.tomcat78x.define.TomcatInstrumentation
+     * tomcat-7.x/8.x=org.apache.skywalking.apm.plugin.tomcat78x.define.ApplicationDispatcherInstrumentation
+     */
+
     /**
      * Plugin name.
      */
