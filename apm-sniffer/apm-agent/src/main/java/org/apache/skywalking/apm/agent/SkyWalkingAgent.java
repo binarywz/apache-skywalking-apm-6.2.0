@@ -89,13 +89,26 @@ public class SkyWalkingAgent {
 
         /**
          * 5.使用ByteBuddy创建AgentBuilder
+         * Config.Agent.IS_OPEN_DEBUGGING_CLASS 在 agent.config 文件中对应的配置项是'agent.is_open_debugging_class'，
+         * 如果将其配置为 true，则会将动态生成的类输出到 debugging 目录中
          */
         final ByteBuddy byteBuddy = new ByteBuddy()
             .with(TypeValidation.of(Config.Agent.IS_OPEN_DEBUGGING_CLASS));
 
-        new AgentBuilder.Default(byteBuddy)
+        /**
+         * - PluginFInder.buildMatch()方法返回的ElementMatcher对象会将全部插件的匹配规则（即插件的enhanceClass()方法返回的ClassMatch）用OR的方式连接起来，
+         *   这样，所有插件能匹配到的所有类都会交给Transformer处理
+         * - with()方法中添加的监听器——SkywalkingAgent.Listener，它继承了AgentBuilder.Listener接口，当监听到Transformation事件时，
+         *   会根据IS_OPEN_DEBUGGING_CLASS配置决定是否将增强之后的类持久化成class文件保存到指定的log目录中。
+         *   注意，该操作是需要加锁的，会影响系统的性能，一般只在测试环境中开启，在生产环境中不会开启。
+         * - 最后来看Skywalking.Transformer，它实现了AgentBuilder.Transformer接口，其transform()方法是插件增强目标类的入口。
+         *   Skywalking.Transformer会通过PluginFinder查找目标类匹配的插件（即AbstractClassEnhancePluginDefine对象），
+         *   然后交由AbstractClassEnhancePluginDefine完成增强
+         * - 如果一个类被多个插件匹配会被增强多次，当你打开IS_OPEN_DEBUGGING_CLASS配置项时，会看到对应的多个class文件
+         */
+        new AgentBuilder.Default(byteBuddy) // 设置使用的ByteBuddy对象
             .ignore(
-                nameStartsWith("net.bytebuddy.")
+                nameStartsWith("net.bytebuddy.") // 设置不拦截的包
                     .or(nameStartsWith("org.slf4j."))
                     .or(nameStartsWith("org.apache.logging."))
                     .or(nameStartsWith("org.groovy."))
@@ -104,9 +117,9 @@ public class SkyWalkingAgent {
                     .or(nameStartsWith("sun.reflect"))
                     .or(allSkyWalkingAgentExcludeToolkit())
                     .or(ElementMatchers.<TypeDescription>isSynthetic()))
-            .type(pluginFinder.buildMatch())
-            .transform(new Transformer(pluginFinder))
-            .with(new Listener())
+            .type(pluginFinder.buildMatch()) // 拦截
+            .transform(new Transformer(pluginFinder)) // 设置transform
+            .with(new Listener()) // 设置Listener
             .installOn(instrumentation);
 
         /**
