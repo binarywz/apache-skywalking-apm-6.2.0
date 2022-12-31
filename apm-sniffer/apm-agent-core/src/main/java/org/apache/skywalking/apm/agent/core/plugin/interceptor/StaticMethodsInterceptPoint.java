@@ -36,13 +36,21 @@ public interface StaticMethodsInterceptPoint {
      * static methods matcher.
      *
      * @return matcher instance.
+     *
+     * 用于匹配目标静态方法
      */
     ElementMatcher<MethodDescription> getMethodsMatcher();
 
     /**
      * @return represents a class name, the class instance must instanceof StaticMethodsAroundInterceptor.
+     *
+     * 拦截到的静态方法交给哪个Interceptor来增强
      */
     String getMethodsInterceptor();
 
+    /**
+     * 增强过程中是否需要修改参数
+     * @return
+     */
     boolean isOverrideArgs();
 }

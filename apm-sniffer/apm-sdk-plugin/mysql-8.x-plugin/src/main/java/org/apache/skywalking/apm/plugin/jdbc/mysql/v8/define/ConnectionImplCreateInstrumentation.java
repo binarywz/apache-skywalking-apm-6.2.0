@@ -33,6 +33,8 @@ import static org.apache.skywalking.apm.agent.core.plugin.match.NameMatch.byName
  * interceptor the method {@link com.mysql.cj.jdbc.ConnectionImpl#getInstance(com.mysql.cj.conf.HostInfo)}
  * instead of {@link com.mysql.cj.jdbc.Driver#connect(String, Properties)}
  * @author: dingshaocheng
+ *
+ * Note: ConnectionImplCreateInstrumentation这个插件拦截的是com.mysql.jdbc.ConnectionImpl.getInstance()这个静态方法
  */
 public class ConnectionImplCreateInstrumentation extends AbstractMysqlInstrumentation {
 
@@ -43,20 +45,27 @@ public class ConnectionImplCreateInstrumentation extends AbstractMysqlInstrument
 
     @Override
     protected StaticMethodsInterceptPoint[] getStaticMethodsInterceptPoints() {
+        /**
+         * StaticMethodsInterceptPoint描述了当前插件要拦截目标类的哪些static静态方法，以及委托给哪个类去增强
+         * Skywalking中StaticMethodsInterceptPoint接口的实现基本都是这种匿名内部类
+         */
         return new StaticMethodsInterceptPoint[] {
             new StaticMethodsInterceptPoint() {
                 @Override
                 public ElementMatcher<MethodDescription> getMethodsMatcher() {
+                    // 增强getInstance方法
                     return named(CONNECT_METHOD);
                 }
 
                 @Override
                 public String getMethodsInterceptor() {
+                    // 委托给ConnectionCreateInterceptor进行增强
                     return "org.apache.skywalking.apm.plugin.jdbc.mysql.v8.ConnectionCreateInterceptor";
                 }
 
                 @Override
                 public boolean isOverrideArgs() {
+                    // 增强过程中无需修改方法参数
                     return false;
                 }
             }
@@ -65,6 +74,7 @@ public class ConnectionImplCreateInstrumentation extends AbstractMysqlInstrument
 
     @Override
     protected ClassMatch enhanceClass() {
+        // 拦截目标类为'com.mysql.cj.jdbc.ConnectionImpl'
         return byName(JDBC_ENHANCE_CLASS);
     }
 }

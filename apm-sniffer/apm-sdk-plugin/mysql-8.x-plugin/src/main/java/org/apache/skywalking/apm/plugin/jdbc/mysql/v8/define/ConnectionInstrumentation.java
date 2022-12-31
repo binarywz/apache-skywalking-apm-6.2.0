@@ -29,20 +29,35 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 import static org.apache.skywalking.apm.agent.core.plugin.match.NameMatch.byName;
 
-
+/**
+ * Note:  mysql-8.x-plugin模块的skywalking-plugin.def文件定义了ConnectionInstrumentation插件类，
+ * 它会被AgentClassLoader加载，其enhanceClass()方法返回的Matcher拦截的目标类是'com.mysql.cj.jdbc.ConnectionImpl'
+ *
+ */
 public class ConnectionInstrumentation extends AbstractMysqlInstrumentation {
 
+    /**
+     * 返回空数组表示不会拦截构造方法，但是依然会修改ConnectionImpl，为其添加_$EnhancedClassField_ws字段并实现EnhanceInstance接口
+     * @return
+     */
     @Override protected ConstructorInterceptPoint[] getConstructorsInterceptPoints() {
         return new ConstructorInterceptPoint[0];
     }
 
     @Override protected InstanceMethodsInterceptPoint[] getInstanceMethodsInterceptPoints() {
         return new InstanceMethodsInterceptPoint[] {
+            /**
+             * 负责拦截ConnectionImpl的prepareStatement()方法，并委托给CreatePreparedStatementInterceptor
+             */
             new InstanceMethodsInterceptPoint() {
                 @Override public ElementMatcher<MethodDescription> getMethodsMatcher() {
                     return named(org.apache.skywalking.apm.plugin.jdbc.define.Constants.PREPARE_STATEMENT_METHOD_NAME);
                 }
 
+                /**
+                 * CreatePreparedStatementInterceptor中，只实现了after()方法，before()和handleMethodException()方法都是空实现
+                 * @return
+                 */
                 @Override public String getMethodsInterceptor() {
                     return org.apache.skywalking.apm.plugin.jdbc.mysql.Constants.CREATE_PREPARED_STATEMENT_INTERCEPTOR;
                 }
@@ -108,6 +123,10 @@ public class ConnectionInstrumentation extends AbstractMysqlInstrumentation {
     }
 
 
+    /**
+     * 匹配当前插件要增强的目标类，此处为com.mysql.cj.jdbc.ConnectionImpl
+     * @return
+     */
     @Override protected ClassMatch enhanceClass() {
         return byName("com.mysql.cj.jdbc.ConnectionImpl");
     }

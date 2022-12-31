@@ -41,6 +41,9 @@ public class ConnectionCreateInterceptor implements StaticMethodsAroundIntercept
     @Override
     public Object afterMethod(Class clazz, Method method, Object[] allArguments, Class<?>[] parameterTypes, Object ret) {
         if (ret instanceof EnhancedInstance) {
+            /**
+             * ConnectionInfo中记录了DB名称、DB类型以及地址等信息，它会被记录到前面新增的_$EnhancedClassField_ws字段中
+             */
             final HostInfo hostInfo = (HostInfo) allArguments[0];
             ConnectionInfo connectionInfo = URLParser.parser(hostInfo.getDatabaseUrl());
             ((EnhancedInstance) ret).setSkyWalkingDynamicField(connectionInfo);

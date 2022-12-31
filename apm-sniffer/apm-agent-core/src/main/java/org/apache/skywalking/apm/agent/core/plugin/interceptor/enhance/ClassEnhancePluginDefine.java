@@ -70,8 +70,14 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
     protected DynamicType.Builder<?> enhance(TypeDescription typeDescription,
                                              DynamicType.Builder<?> newClassBuilder, ClassLoader classLoader,
                                              EnhanceContext context) throws PluginException {
+        /**
+         * 增强静态方法
+         */
         newClassBuilder = this.enhanceClass(typeDescription, newClassBuilder, classLoader);
 
+        /**
+         * 增强构造方法和实例方法
+         */
         newClassBuilder = this.enhanceInstance(typeDescription, newClassBuilder, classLoader, context);
 
         return newClassBuilder;
@@ -83,6 +89,11 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
      * @param typeDescription target class description
      * @param newClassBuilder byte-buddy's builder to manipulate class bytecode.
      * @return new byte-buddy's builder for further manipulation.
+     *
+     * IMPORTANT: 增强实例对象
+     * - 实现EnhancedInstance接口
+     * - 增强构造方法
+     * - 增强实例方法
      */
     private DynamicType.Builder<?> enhanceInstance(TypeDescription typeDescription,
         DynamicType.Builder<?> newClassBuilder, ClassLoader classLoader,
@@ -115,12 +126,17 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
          *
          * And make sure the source codes manipulation only occurs once.
          *
+         * 为目标类添加一个字段，同时会让目标类实现EnhancedInstance接口
+         * EnhanceContext记录了整个增强过程中的上下文信息，里面就两个boolean值
          */
         if (!context.isObjectExtended()) {
-            newClassBuilder = newClassBuilder.defineField(CONTEXT_ATTR_NAME, Object.class, ACC_PRIVATE | ACC_VOLATILE)
+            newClassBuilder = newClassBuilder
+                    // 定义一个字段private volatile的字段，该字段为Object类型
+                    .defineField(CONTEXT_ATTR_NAME, Object.class, ACC_PRIVATE | ACC_VOLATILE)
+                // 实现EnhancedInstance接口的方式是读写新增的"_$EnhancedClassField_ws"字段
                 .implement(EnhancedInstance.class)
                 .intercept(FieldAccessor.ofField(CONTEXT_ATTR_NAME));
-            context.extendObjectCompleted();
+            context.extendObjectCompleted(); // 标记上下文信息
         }
 
         /**
@@ -138,6 +154,7 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
 
         /**
          * 3. enhance instance methods
+         * IMPORTANT: 增强实例方法
          */
         if (existedMethodsInterceptPoints) {
             for (InstanceMethodsInterceptPoint instanceMethodsInterceptPoint : instanceMethodsInterceptPoints) {
@@ -193,9 +210,12 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
      * @param typeDescription target class description
      * @param newClassBuilder byte-buddy's builder to manipulate class bytecode.
      * @return new byte-buddy's builder for further manipulation.
+     *
+     * IMPORTANT: 对静态方法进行增强
      */
     private DynamicType.Builder<?> enhanceClass(TypeDescription typeDescription,
         DynamicType.Builder<?> newClassBuilder, ClassLoader classLoader) throws PluginException {
+        // 获取当前插件的静态方法拦截点，如果该插件不增强静态方法，则该数组为空
         StaticMethodsInterceptPoint[] staticMethodsInterceptPoints = getStaticMethodsInterceptPoints();
         String enhanceOriginClassName = typeDescription.getTypeName();
         if (staticMethodsInterceptPoints == null || staticMethodsInterceptPoints.length == 0) {
@@ -203,11 +223,13 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
         }
 
         for (StaticMethodsInterceptPoint staticMethodsInterceptPoint : staticMethodsInterceptPoints) {
+            // 进行具体增强的Interceptor名称
             String interceptor = staticMethodsInterceptPoint.getMethodsInterceptor();
             if (StringUtil.isEmpty(interceptor)) {
                 throw new EnhanceException("no StaticMethodsAroundInterceptor define to enhance class " + enhanceOriginClassName);
             }
 
+            // 判断增强过程中是否要修改方法参数
             if (staticMethodsInterceptPoint.isOverrideArgs()) {
                 newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
                     .intercept(

@@ -33,11 +33,11 @@ import org.apache.skywalking.apm.util.StringUtil;
  * It provides the outline of enhancing the target class.
  * If you want to know more about enhancing, you should go to see {@link ClassEnhancePluginDefine}
  *
- * Note: 所有Agent插件类的顶级父类
+ * Note: 所有Agent插件类的顶级父类，以下为核心方法(按执行顺序排序)
  * - enhanceClass(): 用于匹配当前插件要增强的目标类
  * - define(): 插件类增强逻辑的入口，底层会调用下面的enhance()/witnessClass()
- * - enhance(): 真正执行增强逻辑的地方
  * - witnessClass(): 一个开源组件可能会有多个版本，插件会通过该方法识别组件的不同版本，防止对不兼容的版本进行增强
+ * - enhance(): 真正执行增强逻辑的地方
  */
 public abstract class AbstractClassEnhancePluginDefine {
     private static final ILog logger = LogManager.getLogger(AbstractClassEnhancePluginDefine.class);
@@ -68,6 +68,7 @@ public abstract class AbstractClassEnhancePluginDefine {
         String[] witnessClasses = witnessClasses();
         if (witnessClasses != null) {
             for (String witnessClass : witnessClasses) {
+                // 判断指定类加载器中是否存在witnessClass()指定的类
                 if (!WitnessClassFinder.INSTANCE.exist(witnessClass, classLoader)) {
                     logger.warn("enhance class {} by plugin {} is not working. Because witness class {} is not existed.", transformClassName, interceptorDefineClassName,
                         witnessClass);
@@ -106,6 +107,14 @@ public abstract class AbstractClassEnhancePluginDefine {
      * com.company.1.x.A, only in 1.0 ), and you can achieve the goal.
      *
      * @return
+     *
+     * Note: 开源组件和工具类库的功能会不断增加，不同版本中同名类的功能和结构已经发生了翻天覆地的变化。要通过一个SkyWalking Agent插件完成对一个开源组件所有版本的增强，
+     * 是非常难实现的，即使勉强能够实现，该插件的实现也会变的非常臃肿，扩展性也会成问题
+     * Skywalking怎么解决这个问题呢？以MySQL为例，Skywalking为每个版本的mysql-connector-java.jar提供了不同版本的插件，这些插件的witnessClass()方法返回值不同，
+     * 具体返回的是对应版本的mysql-connector-java.jar所特有的一个类:
+     * - mysql-5.x-plugin -> com.mysql.jdbc.ConnectionImpl
+     * - mysql-8.x-plugin -> com.mysql.cj.interceptors.QueryInterceptor
+     * 若当前类加载器无法扫描到插件witnessClass()方法指定的类，表示当前插件版本不合适，即使拦截到了目标类，也不能增进行增强
      */
     protected String[] witnessClasses() {
         return new String[] {};
