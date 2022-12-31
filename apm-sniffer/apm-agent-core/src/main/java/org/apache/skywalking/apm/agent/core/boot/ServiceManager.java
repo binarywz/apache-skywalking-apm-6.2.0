@@ -44,6 +44,10 @@ public enum ServiceManager {
     public void boot() {
         bootedServices = loadAllServices();
 
+        /**
+         * 在前一步找到要使用的BootService实现后，ServiceManager将统一初始化bootServices集合中的BootService实现，
+         * 同样是在ServiceManager.boot()方法中，会逐个调用BootService实现的prepare()/startup()/onComplete()方法
+         */
         prepare();
         startup();
         onComplete();
@@ -59,10 +63,30 @@ public enum ServiceManager {
         }
     }
 
+    /**
+     * 实例化全部BootService接口
+     * @return
+     */
     private Map<Class, BootService> loadAllServices() {
         Map<Class, BootService> bootedServices = new LinkedHashMap<Class, BootService>();
         List<BootService> allServices = new LinkedList<BootService>();
+        /**
+         * 通过Java SPI加载并实例化META-INF/services下的全部BootService接口实现
+         *
+         * org.apache.skywalking.apm.agent.core.remote.TraceSegmentServiceClient
+         * org.apache.skywalking.apm.agent.core.context.ContextManager
+         * org.apache.skywalking.apm.agent.core.sampling.SamplingService
+         * org.apache.skywalking.apm.agent.core.remote.GRPCChannelManager
+         * org.apache.skywalking.apm.agent.core.jvm.JVMService
+         * org.apache.skywalking.apm.agent.core.remote.ServiceAndEndpointRegisterClient
+         * org.apache.skywalking.apm.agent.core.context.ContextManagerExtendService
+         */
         load(allServices);
+        /**
+         * 遍历所有BootService实现，针对BootService上的@DefaultImplementor和@OverrideImplementor注解进行处理:
+         * - @DefaultImplementor注解用于标识BootService接口的默认实现
+         * - @OverrideImplementor注解用于覆盖默认BootService实现，通过其value字段指定要覆盖的默认实现
+         */
         Iterator<BootService> serviceIterator = allServices.iterator();
         while (serviceIterator.hasNext()) {
             BootService bootService = serviceIterator.next();

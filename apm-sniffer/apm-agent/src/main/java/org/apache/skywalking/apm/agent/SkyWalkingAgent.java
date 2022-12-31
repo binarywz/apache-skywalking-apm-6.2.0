@@ -124,6 +124,8 @@ public class SkyWalkingAgent {
 
         /**
          * 6.使用JDK SPI加载的方式，启动BootService服务
+         * - ServiceManager是BootService实例的管理器，主要负责管理BootService实例的生命周期
+         * - ServiceManager是个单例，底层维护了一个bootedServices集合，记录每个BootService对应的实现
          */
         try {
             ServiceManager.INSTANCE.boot();
