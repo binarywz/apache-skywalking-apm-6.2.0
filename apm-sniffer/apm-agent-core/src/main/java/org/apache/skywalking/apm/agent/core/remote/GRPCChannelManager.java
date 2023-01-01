@@ -28,6 +28,9 @@ import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
 
 /**
  * @author wusheng, zhang xin
+ *
+ * Note: 维护GRPCChannel连接以及注册在其上的Listener监听，另外还维护一个后台线程定期
+ * 检测该GRPCChannel的连接状态，如果发现连接断开，则会进行重连
  */
 @DefaultImplementor
 public class GRPCChannelManager implements BootService, Runnable {
@@ -37,6 +40,9 @@ public class GRPCChannelManager implements BootService, Runnable {
     private volatile ScheduledFuture<?> connectCheckFuture;
     private volatile boolean reconnect = true;
     private Random random = new Random();
+    /**
+     * GRPCChannelListener -> 监听器接口
+     */
     private List<GRPCChannelListener> listeners = Collections.synchronizedList(new LinkedList<GRPCChannelListener>());
     private volatile List<String> grpcServers;
     private volatile int selectedIdx = -1;
@@ -46,6 +52,11 @@ public class GRPCChannelManager implements BootService, Runnable {
 
     }
 
+    /**
+     * - 解析agent.config配置文件指定的后端OAP实例地址初始化grpcServers字段
+     * - 初始化定时任务，初次会立即执行，之后每隔30s执行
+     * @throws Throwable
+     */
     @Override
     public void boot() throws Throwable {
         if (Config.Collector.BACKEND_SERVICE.trim().length() == 0) {
@@ -98,15 +109,23 @@ public class GRPCChannelManager implements BootService, Runnable {
                             managedChannel.shutdownNow();
                         }
 
+                        /**
+                         * 根据配置，连接指定OAP实例的IP和端口
+                         */
                         managedChannel = GRPCChannel.newBuilder(ipAndPort[0], Integer.parseInt(ipAndPort[1]))
                             .addManagedChannelBuilder(new StandardChannelBuilder())
                             .addManagedChannelBuilder(new TLSChannelBuilder())
                             .addChannelDecorator(new AuthenticationDecorator())
                             .build();
 
+                        /**
+                         * 循环调用所有注册在当前连接上的GRPCChannelListener实例(记录在listeners集合中)的statusChanged方法，
+                         * 通知它们连接创建成功的时间
+                         */
                         notify(GRPCChannelStatus.CONNECTED);
                     }
 
+                    // 设置reconnect字段为false，暂时不会再重建连接了
                     reconnect = false;
                     return;
                 } catch (Throwable t) {

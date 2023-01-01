@@ -50,6 +50,8 @@ import org.apache.skywalking.apm.util.RunnableWithExceptionProtection;
  * the collected info to Collector through the channel provided by {@link GRPCChannelManager}
  *
  * @author wusheng
+ *
+ * Note: collectMetric -> queue -> sendMetric -> gRpc -> OAP集群
  */
 @DefaultImplementor
 public class JVMService implements BootService, Runnable {
@@ -63,7 +65,7 @@ public class JVMService implements BootService, Runnable {
     public void prepare() throws Throwable {
         queue = new LinkedBlockingQueue(Config.Jvm.BUFFER_SIZE);
         sender = new Sender();
-        ServiceManager.INSTANCE.findService(GRPCChannelManager.class).addChannelListener(sender);
+        ServiceManager.INSTANCE.findService(GRPCChannelManager.class).addChannelListener(sender); // sender会监听底层的连接状态
     }
 
     @Override
@@ -134,10 +136,13 @@ public class JVMService implements BootService, Runnable {
                     try {
                         JVMMetricCollection.Builder builder = JVMMetricCollection.newBuilder();
                         LinkedList<JVMMetric> buffer = new LinkedList<JVMMetric>();
+                        // 将queue队列中缓存的全部数据填充到buffer中
                         queue.drainTo(buffer);
                         if (buffer.size() > 0) {
+                            // 创建RPC请求参数
                             builder.addAllMetrics(buffer);
                             builder.setServiceInstanceId(RemoteDownstreamConfig.Agent.SERVICE_INSTANCE_ID);
+                            // 通过gRpc调用将JVM监控数据发送到后端OAP集群
                             stub.collect(builder.build());
                         }
                     } catch (Throwable t) {

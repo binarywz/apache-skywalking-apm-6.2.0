@@ -73,6 +73,7 @@ public enum EndpointNameDictionary {
     public void syncRemoteDictionary(
         RegisterGrpc.RegisterBlockingStub serviceNameDiscoveryServiceBlockingStub) {
         if (unRegisterEndpoints.size() > 0) {
+            // 创建请求，每个Endpoint中都封装了Endpoint名称以及关联的serviceId
             Enpoints.Builder builder = Enpoints.newBuilder();
             for (OperationNameKey operationNameKey : unRegisterEndpoints) {
                 Endpoint endpoint = Endpoint.newBuilder()
@@ -82,9 +83,11 @@ public enum EndpointNameDictionary {
                     .build();
                 builder.addEndpoints(endpoint);
             }
+            // 发送同步请求
             EndpointMapping serviceNameMappingCollection = serviceNameDiscoveryServiceBlockingStub.doEndpointRegister(builder.build());
             if (serviceNameMappingCollection.getElementsCount() > 0) {
                 for (EndpointMappingElement element : serviceNameMappingCollection.getElementsList()) {
+                    // 将返回的映射关系，记录到endpointDictionary集合中，并从unRegisterEndpoints集合中删除Endpoint信息
                     OperationNameKey key = new OperationNameKey(
                         element.getServiceId(),
                         element.getEndpointName(),
