@@ -35,13 +35,25 @@ import org.apache.skywalking.apm.util.StringUtil;
  * <p> Also, {@link ContextManager} delegates to all {@link AbstractTracerContext}'s major methods.
  *
  * @author wusheng
+ *
+ * Note: 管理TracingContext，虽然ContextManager实现了BootService接口，但是prepare()、boot()、onComplete()方法都为空实现。
  */
 public class ContextManager implements BootService {
     private static final ILog logger = LogManager.getLogger(ContextManager.class);
+    // 将一个TracingContext对象与一个线程进行关联
     private static ThreadLocal<AbstractTracerContext> CONTEXT = new ThreadLocal<AbstractTracerContext>();
+    // RuntimeContext底层封装了一个ConcurrentHashMap集合，可以为当前TracingContext记录一些附加信息
     private static ThreadLocal<RuntimeContext> RUNTIME_CONTEXT = new ThreadLocal<RuntimeContext>();
+    // ContextManagerExtendService也实现了BootService，它主要负责创建TracingContext对象
     private static ContextManagerExtendService EXTEND_SERVICE;
 
+    /**
+     * 从Context字段中获取当前线程绑定的TracingContext对象，如果当前线程没有关联TracingContext上下文，
+     * 则会通过EXTEND_SERVICE新建并绑定
+     * @param operationName
+     * @param forceSampling
+     * @return
+     */
     private static AbstractTracerContext getOrCreate(String operationName, boolean forceSampling) {
         AbstractTracerContext context = CONTEXT.get();
         if (context == null) {
@@ -86,16 +98,27 @@ public class ContextManager implements BootService {
         }
     }
 
+    /**
+     * ContextManager提供了与TracingContext对应的几乎所有方法，基本实现都是委托给当前线程绑定的TracingContext对象
+     * @param operationName
+     * @param carrier
+     * @return
+     */
     public static AbstractSpan createEntrySpan(String operationName, ContextCarrier carrier) {
+        // 采样相关
         SamplingService samplingService = ServiceManager.INSTANCE.findService(SamplingService.class);
         AbstractSpan span;
         AbstractTracerContext context;
+        // 检查ContextCarrier是否合法，其实就是检查它的核心字段是否已填充好
         if (carrier != null && carrier.isValid()) {
             samplingService.forceSampled();
+            // 获取当前线程绑定的TracingContext
             context = getOrCreate(operationName, true);
+            // 委托给当前线程绑定的TracingContext来创建EntrySpan
             span = context.createEntrySpan(operationName);
             context.extract(carrier);
         } else {
+            // 没有上游服务的场景
             context = getOrCreate(operationName, false);
             span = context.createEntrySpan(operationName);
         }

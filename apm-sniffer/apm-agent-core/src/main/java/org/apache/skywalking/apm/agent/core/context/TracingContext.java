@@ -391,6 +391,8 @@ public class TracingContext implements AbstractTracerContext {
      * core must make sure the span must match in a stack module, like any program did.
      *
      * @param span to finish
+     * NOTE: 当TracingContext通过stopSpan()方法关闭最后一个Span时，会调用finish()方法关闭相应的TraceSegment，
+     * 与此同时，还会调用TracingContext.ListenerManager.notifyFinish()方法通知所有监听TracingContext关闭事件的监听——TracingContextListener
      */
     @Override
     public boolean stopSpan(AbstractSpan span) {

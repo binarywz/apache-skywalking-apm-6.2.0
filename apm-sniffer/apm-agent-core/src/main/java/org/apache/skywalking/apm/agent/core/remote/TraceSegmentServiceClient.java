@@ -37,6 +37,13 @@ import static org.apache.skywalking.apm.agent.core.remote.GRPCChannelStatus.CONN
 
 /**
  * @author wusheng
+ *
+ * Note: TraceSegmentServiceClient是TracingContextListener接口的唯一实现，其主要功能就是在TraceSegment结束时对其进行收集，并发送到后端的OAP集群
+ * TraceSegmentServiceClient底层维护了一个DataCarrier对象，其底层Channels默认有5个Buffer，每个Buffer长度为300，使用的是IF_POSSIBLE阻塞写入策略，
+ * 底层会启动一个ConsumerThread线程。
+ * TraceSegmentServiceClient作为一个TracingContextListener接口的实现，会在notifyFinish()方法中，将刚刚结束的TraceSegment写入到DataCarrier中缓存。
+ * 同时，TraceSegmentServiceClient实现了IConsumer接口，封装了消费Channels中数据的逻辑，在consume()方法中会首先将消费到的TraceSegment对象序列化，
+ * 然后通过gRPC请求发送到后端OAP集群。
  */
 @DefaultImplementor
 public class TraceSegmentServiceClient implements BootService, IConsumer<TraceSegment>, TracingContextListener, GRPCChannelListener {
