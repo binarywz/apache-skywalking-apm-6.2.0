@@ -34,9 +34,9 @@ import org.apache.skywalking.apm.network.trace.component.Component;
  * @author wusheng
  */
 public abstract class AbstractTracingSpan implements AbstractSpan {
-    protected int spanId;
-    protected int parentSpanId;
-    protected List<TagValuePair> tags;
+    protected int spanId; // span的id
+    protected int parentSpanId; // 记录父span的id
+    protected List<TagValuePair> tags; // 记录tags的集合
     protected String operationName;
     protected int operationId;
     protected SpanLayer layer;
@@ -121,6 +121,8 @@ public abstract class AbstractTracingSpan implements AbstractSpan {
      * it.
      *
      * @param owner of the Span.
+     *
+     * Note: 关闭当前Span，具体行为是用endTime字段记录当前时间，并将当前Span记录到所属TraceSegment的spans集合中
      */
     public boolean finish(TraceSegment owner) {
         this.endTime = System.currentTimeMillis();
@@ -263,6 +265,11 @@ public abstract class AbstractTracingSpan implements AbstractSpan {
         return this;
     }
 
+    /**
+     * 该方法会在Agent上报TraceSegment数据之前调用，它会将当前AbstractTracingSpan对象转换成SpanObjectV2对象。
+     * SpanObjectV2是在proto文件中定义的结构体，后面gRPC上报TraceSegment数据时会将其序列化。
+     * @return
+     */
     public SpanObjectV2.Builder transform() {
         SpanObjectV2.Builder spanBuilder = SpanObjectV2.newBuilder();
 

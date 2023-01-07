@@ -238,11 +238,15 @@ public class TracingContext implements AbstractTracerContext {
      */
     @Override
     public AbstractSpan createEntrySpan(final String operationName) {
+        /**
+         * 默认配置下，每个TraceSegment只能放300个Span
+         */
         if (isLimitMechanismWorking()) {
-            NoopSpan span = new NoopSpan();
-            return push(span);
+            NoopSpan span = new NoopSpan(); // 超过300就放NoopSpan
+            return push(span); // 将Span记录到activeSpanStack这个栈中
         }
         AbstractSpan entrySpan;
+        // 读取栈顶Span，即当前Span
         final AbstractSpan parentSpan = peek();
         final int parentSpanId = parentSpan == null ? -1 : parentSpan.getSpanId();
         if (parentSpan != null && parentSpan.isEntry()) {
@@ -270,7 +274,9 @@ public class TracingContext implements AbstractTracerContext {
                         return new EntrySpan(spanIdGenerator++, parentSpanId, operationName);
                     }
                 });
+            // 调用start()方法，第一个调用start()方法时会设置startTime
             entrySpan.start();
+            // 将新建的Span添加到activeSpanStack栈的栈顶
             return push(entrySpan);
         }
     }

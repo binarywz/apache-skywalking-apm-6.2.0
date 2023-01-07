@@ -28,6 +28,8 @@ import org.apache.skywalking.apm.network.trace.component.ComponentsDefine;
  * The <code>AbstractSpan</code> represents the span's skeleton, which contains all open methods.
  *
  * @author wusheng
+ *
+ * Note: 定义Span的基本行为
  */
 public interface AbstractSpan extends AsyncSpan {
     /**
@@ -47,6 +49,11 @@ public interface AbstractSpan extends AsyncSpan {
      */
     AbstractSpan setComponent(String componentName);
 
+    /**
+     * Note: 用于设置SpanLayer，也就是当前Span所处的位置。SpanLayer是个枚举，可选项有DB、RPC_FRAMEWORK、HTTP、MQ、CACHE
+     * @param layer
+     * @return
+     */
     AbstractSpan setLayer(SpanLayer layer);
 
     /**
@@ -97,6 +104,13 @@ public interface AbstractSpan extends AsyncSpan {
      * Sets the string name for the logical operation this span represents.
      *
      * @return this Span instance, for chaining
+     *
+     * Note: setOperationName/setOperationId用来设置operation名称或(operation ID)，这两个信息是互斥的。
+     * 它们在AbstractSpan的具体实现(即AbstractTracingSpan)中，分别对应operationId和operationName两个字段，
+     * 两者只能有一个字段有值
+     *
+     * operationName即前文介绍的EndpointName，可以是任意字符串。例如，在Tomcat插件中operationName就是URI地址，
+     * Dubbo插件中operationName为URL+接口方法签名
      */
     AbstractSpan setOperationName(String operationName);
 
@@ -111,6 +125,8 @@ public interface AbstractSpan extends AsyncSpan {
      * Get the id of span
      *
      * @return id value.
+     *
+     * Note: 获取当前Span的ID，SpanId是一个int类型的值，在其所属的TraceSegment中唯一，在创建Span对象时生成，从0开始递增
      */
     int getSpanId();
 

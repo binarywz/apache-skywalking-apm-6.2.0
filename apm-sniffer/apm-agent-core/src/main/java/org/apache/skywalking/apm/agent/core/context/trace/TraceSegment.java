@@ -36,10 +36,17 @@ import org.apache.skywalking.apm.network.language.agent.v2.SegmentObject;
  * by multi {@link TraceSegment}s, because the distributed trace crosses multi-processes, multi-threads. <p>
  *
  * @author wusheng
+ *
+ * Note: TraceSegment是一个介于Trace和Span之间的概念，它时一条Trace的一段，可以包含多个Span。
+ * 在微服务架构中，一个请求基本都会涉及跨进程/线程的操作，例如，RPC调用、通过MQ异步执行、HTTP请求远端资源等，
+ * 处理一个请求就需要涉及到多个服务的多个线程。TraceSegment记录了一个请求在一个线程中的执行流程(即Trace信息)。
+ * 将该请求关联的TraceSegment串联起来，就能得到该请求对应的完整Trace。
  */
 public class TraceSegment {
     /**
      * The id of this trace segment. Every segment has its unique-global-id.
+     *
+     * Note: TraceSegment的全局唯一标识，由GlobalIdGenerator生成
      */
     private ID traceSegmentId;
 
@@ -49,12 +56,18 @@ public class TraceSegment {
      * we use this {@link #refs} to link them.
      *
      * This field will not be serialized. Keeping this field is only for quick accessing.
+     *
+     * Note: 指向父TraceSegment，在常见的RPC调用、HTTP请求等跨进程调用中，一个TraceSegment最多只有一个TraceSegment；但是在一个Consumer
+     * 批量消费MQ消息时，同一批内的消息可能来自不同的Producer，这就会导致Consumer线程对应的TraceSegment有多个TraceSegment，此时该Consumer
+     * TraceSegment也就属于多个Trace
      */
     private List<TraceSegmentRef> refs;
 
     /**
      * The spans belong to this trace segment. They all have finished. All active spans are hold and controlled by
      * "skywalking-api" module.
+     *
+     * Note: 当前TraceSegment包含的所有span
      */
     private List<AbstractTracingSpan> spans;
 
@@ -65,6 +78,8 @@ public class TraceSegment {
      * <code>relatedGlobalTraces</code> and {@link #refs} is: {@link #refs} targets this {@link TraceSegment}'s direct
      * parent, <p> and <p> <code>relatedGlobalTraces</code> targets this {@link TraceSegment}'s related call chain, a
      * call chain contains multi {@link TraceSegment}s, only using {@link #refs} is not enough for analysis and ui.
+     *
+     * Note: 记录当前TraceSegment所属Trace的TraceId
      */
     private DistributedTraceIds relatedGlobalTraces;
 

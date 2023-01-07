@@ -50,6 +50,8 @@ public final class GlobalIdGenerator {
      * bytes.
      *
      * @return an array contains three long numbers, which represents a unique id.
+     *
+     * Note: THREAD_ID_SEQUENCE是ThreadLocal<IDContext>类型，即每个线程维护一个 IDContext对象
      */
     public static ID generate() {
         if (RemoteDownstreamConfig.Agent.SERVICE_INSTANCE_ID == DictionaryUtil.nullValue()) {
@@ -58,9 +60,9 @@ public final class GlobalIdGenerator {
         IDContext context = THREAD_ID_SEQUENCE.get();
 
         return new ID(
-            RemoteDownstreamConfig.Agent.SERVICE_INSTANCE_ID,
-            Thread.currentThread().getId(),
-            context.nextSeq()
+            RemoteDownstreamConfig.Agent.SERVICE_INSTANCE_ID, // serviceInstanceId
+            Thread.currentThread().getId(), // 当前线程ID
+            context.nextSeq() // 线程内生成的序列号
         );
     }
 
@@ -79,6 +81,10 @@ public final class GlobalIdGenerator {
         }
 
         private long nextSeq() {
+            /**
+             * - timestamp()方法在返回时间戳时会处理时间回拨的场景(使用Random随机生成一个时间戳)
+             * - nextThreadSeq()方法的返回值在[0,9999]这个范围内循环
+             */
             return timestamp() * 10000 + nextThreadSeq();
         }
 

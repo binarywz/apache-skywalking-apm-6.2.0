@@ -42,6 +42,8 @@ public interface AsyncSpan {
      * The execution times of {@link #prepareForAsync} and {@link #asyncFinish()} must match.
      *
      * @return the current span
+     *
+     * Note: Span在当前线程结束了，但是未被彻底关闭，依然是存活的
      */
     AbstractSpan prepareForAsync();
 
@@ -51,6 +53,8 @@ public interface AsyncSpan {
      * The execution times of {@link #prepareForAsync} and {@link #asyncFinish()} must match.
      *
      * @return the current span
+     *
+     * Note: 当前Span真正关闭，它与prepareForAsync()是成对出现的
      */
     AbstractSpan asyncFinish();
 }

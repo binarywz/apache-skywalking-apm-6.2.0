@@ -24,6 +24,10 @@ import org.apache.skywalking.apm.agent.core.context.trace.AbstractSpan;
  * The <code>AbstractTracerContext</code> represents the tracer context manager.
  *
  * @author wusheng
+ *
+ * Note: Skywalking中的每个TraceSegment都与一个Context上下文对象一对一绑定，Context上下文不仅记录了TraceSegment的上下文信息，
+ * 还提供了管理TraceSegment声明周期、创建Span以及跨进程/线程传播相关的功能，AbstractTracerContext是对上下文概念的抽象，其定义了
+ * Context上下文的基本行为
  */
 public interface AbstractTracerContext {
     /**

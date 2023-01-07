@@ -29,6 +29,15 @@ import org.apache.skywalking.apm.network.language.agent.v2.SpanObjectV2;
  * This kind of span can start and finish multi times in a stack-like invoke line.
  *
  * @author wusheng
+ *
+ * Note: StackBasedTracingSpan在继承AbstractTracingSpan存储Span核心数据能力的同时，还引入了栈的概念，
+ * 这种Span可以多次调用start()方法和end()方法，但是两者调用次数必须要配对，类似出栈和入栈的操作。
+ *
+ * 以EntrySpan为例说明为什么需要"栈"这个概念，EntrySpan表示的是一个服务的入口Span，是TraceSegment的第一个Span，出现在服务提供方
+ * 的入口，如Dubbo Provider/Tomcat/Spring MVC等。那么为什么EntrySpan继承StackBasedTracingSpan呢？从前面对Skywalking Agent的
+ * 分析来看，Agent插件会拦截指定类的指定方法并对其进行增强。
+ * 如Tomcat/Spring MVC等插件的增强逻辑中就包含了创建Entry Span的逻辑，很多Web项目会同时使用到这两个插件，难道一个TraceSegment要有两个EntrySpan吗？显然不行
+ * Skywalking的处理方式是让Entry Span继承StackBasedTracingSpan，StackBasedTracingSpan并没有使用栈结构，借助stackDepth、currentMaxDepth两个字段实现类似栈的思想
  */
 public abstract class StackBasedTracingSpan extends AbstractTracingSpan {
     protected int stackDepth;
