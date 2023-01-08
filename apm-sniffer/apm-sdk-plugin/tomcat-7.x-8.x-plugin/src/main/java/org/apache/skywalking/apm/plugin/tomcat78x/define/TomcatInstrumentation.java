@@ -31,6 +31,13 @@ import static org.apache.skywalking.apm.agent.core.plugin.match.NameMatch.byName
 
 /**
  * @author zhangxin
+ *
+ * Note:
+ * 重点关注四个点:
+ * - 拦截哪个类
+ * - 拦截哪个方法
+ * - 由谁进行增强
+ * - 具体增强逻辑
  */
 public class TomcatInstrumentation extends ClassInstanceMethodsEnhancePluginDefine {
 
@@ -49,33 +56,47 @@ public class TomcatInstrumentation extends ClassInstanceMethodsEnhancePluginDefi
      */
     private static final String EXCEPTION_INTERCEPT_CLASS = "org.apache.skywalking.apm.plugin.tomcat78x.TomcatExceptionInterceptor";
 
+    /**
+     * 拦截Tomcat的StandardHostValve类
+     * @return
+     */
     @Override
     protected ClassMatch enhanceClass() {
         return byName(ENHANCE_CLASS);
     }
 
+    /**
+     * 返回null，表示不会拦截StandardHostValve的构造方法
+     * @return
+     */
     @Override
     protected ConstructorInterceptPoint[] getConstructorsInterceptPoints() {
         return null;
     }
 
+    /**
+     * 返回两个示例方法增强点(InstanceMethodsInterceptPoint对象)，表示拦截两个实例方法:
+     * - invoke(Request request, Response response)
+     * - throwable(Request request, Response response, Throwable throwable)
+     * @return
+     */
     @Override
     protected InstanceMethodsInterceptPoint[] getInstanceMethodsInterceptPoints() {
         return new InstanceMethodsInterceptPoint[] {
             new InstanceMethodsInterceptPoint() {
                 @Override
                 public ElementMatcher<MethodDescription> getMethodsMatcher() {
-                    return named("invoke");
+                    return named("invoke"); // 拦截invoke()方法
                 }
 
                 @Override
                 public String getMethodsInterceptor() {
-                    return INVOKE_INTERCEPT_CLASS;
+                    return INVOKE_INTERCEPT_CLASS; // 拦截后的增强逻辑
                 }
 
                 @Override
                 public boolean isOverrideArgs() {
-                    return false;
+                    return false; // 不修改invoke的参数
                 }
             },
             new InstanceMethodsInterceptPoint() {

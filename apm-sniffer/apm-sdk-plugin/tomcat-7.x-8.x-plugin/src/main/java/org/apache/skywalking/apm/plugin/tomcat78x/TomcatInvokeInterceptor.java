@@ -54,20 +54,30 @@ public class TomcatInvokeInterceptor implements InstanceMethodsAroundInterceptor
      */
     @Override public void beforeMethod(EnhancedInstance objInst, Method method, Object[] allArguments,
         Class<?>[] argumentsTypes, MethodInterceptResult result) throws Throwable {
+        // invoke()方法的第一个参数就是HttpServletRequest对象
         HttpServletRequest request = (HttpServletRequest)allArguments[0];
+        // 创建一个空的ContextCarrier对象
         ContextCarrier contextCarrier = new ContextCarrier();
 
+        /**
+         * 从Http请求头中反序列化ContextCarrier
+         */
         CarrierItem next = contextCarrier.items();
         while (next.hasNext()) {
             next = next.next();
             next.setHeadValue(request.getHeader(next.getHeadKey()));
         }
 
+        /**
+         * 获取当前线程绑定的TracingContext，如果未绑定则会创建新TracingContext并绑定，同时还会创建EntrySpan，如果已存在EntrySpan，
+         * 则再次调用其start()方法。这里的第一个请求参数是operationName(即EndpointName)，Tomcat场景下就是请求的URI
+         */
         AbstractSpan span = ContextManager.createEntrySpan(request.getRequestURI(), contextCarrier);
+        // 为EntrySpan添加Tags，记录请求的URL以及method的信息
         Tags.URL.set(span, request.getRequestURL().toString());
         Tags.HTTP.METHOD.set(span, request.getMethod());
-        span.setComponent(ComponentsDefine.TOMCAT);
-        SpanLayer.asHttp(span);
+        span.setComponent(ComponentsDefine.TOMCAT); // 设置component字段
+        SpanLayer.asHttp(span); // 设置layer字段
 
     }
 

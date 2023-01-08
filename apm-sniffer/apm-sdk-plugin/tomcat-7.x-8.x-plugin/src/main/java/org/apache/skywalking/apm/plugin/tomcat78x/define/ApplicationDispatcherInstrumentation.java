@@ -29,6 +29,9 @@ import static net.bytebuddy.matcher.ElementMatchers.any;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static org.apache.skywalking.apm.agent.core.plugin.match.NameMatch.byName;
 
+/**
+ * Note: 负责拦截Tomcat中ApplicationDispatcher的全部构造方法以及其forward()，具体增强逻辑位于ForwardInterceptor中
+ */
 public class ApplicationDispatcherInstrumentation extends ClassInstanceMethodsEnhancePluginDefine {
 
     private static final String ENHANCE_CLASS = "org.apache.catalina.core.ApplicationDispatcher";
